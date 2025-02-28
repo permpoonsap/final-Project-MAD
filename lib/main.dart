@@ -1,9 +1,9 @@
-import 'package:account/model/transactionItem.dart';
-import 'package:account/provider/transactionProvider.dart';
 import 'package:flutter/material.dart';
-import 'formScreen.dart';
-import 'package:account/editScreen.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
+import 'provider/cryptoProvider.dart';
+import 'EditCryptoScreen.dart';
+import 'AddCryptoScreen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -12,144 +12,162 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
-        providers: [
-          ChangeNotifierProvider(create: (context) {
-            return TransactionProvider();
-          })
-        ],
-        child: MaterialApp(
-          title: 'Flutter Demo',
-          theme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-            useMaterial3: true,
-          ),
-          home: const MyHomePage(title: 'Flutter Demo Home Page'),
-        ));
+      providers: [
+        ChangeNotifierProvider(create: (context) => CryptoProvider()..initData()),
+      ],
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'Crypto Manager',
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueAccent),
+          useMaterial3: true,
+          fontFamily: 'Roboto',
+        ),
+        home: const CryptoHomePage(),
+      ),
+    );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  @override
-  void initState() {
-    super.initState();
-
-    TransactionProvider provider =
-        Provider.of<TransactionProvider>(context, listen: false);
-    provider.initData();
-  }
+class CryptoHomePage extends StatelessWidget {
+  const CryptoHomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final provider = Provider.of<CryptoProvider>(context, listen: false);
+
     return Scaffold(
-        appBar: AppBar(
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-          title: Text(widget.title),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.add),
-              onPressed: () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) {
-                  return FormScreen();
-                }));
-              },
-            ),
-          ],
+      appBar: AppBar(
+        title: const Text(
+          'Crypto Manager',
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
-        body: Consumer(
-          builder: (context, TransactionProvider provider, Widget? child) {
-            int itemCount = provider.transactions.length;
-            if (itemCount == 0) {
-              return Center(
-                child: Text(
-                  'ไม่มีรายการ',
-                  style: TextStyle(fontSize: 50),
+        backgroundColor: Colors.blueAccent,
+        elevation: 4,
+        shadowColor: Colors.black26,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            onPressed: () async {
+              await provider.fetchCryptoData();
+            },
+          ),
+        ],
+      ),
+      body: Consumer<CryptoProvider>(
+        builder: (context, provider, child) {
+          if (provider.cryptos.isEmpty) {
+            return const Center(
+              child: Text(
+                'No Cryptos Available',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.grey),
+              ),
+            );
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(12),
+            itemCount: provider.cryptos.length,
+            itemBuilder: (context, index) {
+              final crypto = provider.cryptos[index];
+
+              return Dismissible(
+                key: Key(crypto.keyID.toString()),
+                background: Container(
+                  alignment: Alignment.centerLeft,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  color: Colors.blue,
+                  child: const Icon(Icons.edit, color: Colors.white, size: 28),
                 ),
-              );
-            } else {
-              return ListView.builder(
-                  itemCount: itemCount,
-                  itemBuilder: (context, int index) {
-                    TransactionItem data = provider.transactions[index];
-                    return Dismissible(
-                      key: Key(data.keyID.toString()),
-                      direction: DismissDirection.horizontal,
-                      onDismissed: (direction) {
-                        provider.deleteTransaction(data);
-                      },
-                      background: Container(
-                        color: Colors.red,
-                        alignment: Alignment.centerRight,
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: const Icon(Icons.edit, color: Colors.white),
-                      ),
-                      child: Card(
-                        elevation: 3,
-                        margin: const EdgeInsets.symmetric(
-                            vertical: 8, horizontal: 12),
-                        child: ListTile(
-                            title: Text(data.title),
-                            subtitle: Text(
-                                'วันที่บันทึกข้อมูล: ${data.date?.toIso8601String()}',
-                                style: TextStyle(fontSize: 10)),
-                            leading: CircleAvatar(
-                              child: FittedBox(
-                                child: Text(data.amount.toString()),
-                              ),
-                            ),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete),
-                              onPressed: () {
-                                showDialog(
-                                  context: context,
-                                  builder: (BuildContext context) {
-                                    return AlertDialog(
-                                      title: Text('ยืนยันการลบ'),
-                                      content:
-                                          Text('คุณต้องการลบรายการใช่หรือไม่?'),
-                                      actions: [
-                                        TextButton(
-                                          child: Text('ยกเลิก'),
-                                          onPressed: () {
-                                            Navigator.of(context).pop();
-                                          },
-                                        ),
-                                        TextButton(
-                                          child: Text('ลบรายการ'),
-                                          onPressed: () {
-                                            provider.deleteTransaction(data);
-                                            Navigator.of(context).pop();
-                                          },
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                );
-                              },
-                            ),
-                            onTap: () {
-                              Navigator.push(context,
-                                  MaterialPageRoute(builder: (context) {
-                                return EditScreen(item: data);
-                              }));
-                            }),
+                secondaryBackground: Container(
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  color: Colors.red,
+                  child: const Icon(Icons.delete, color: Colors.white, size: 28),
+                ),
+                confirmDismiss: (direction) async {
+                  if (direction == DismissDirection.startToEnd) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => EditCryptoScreen(crypto: crypto),
                       ),
                     );
-                  });
-            }
-          },
-        ));
+                    return false;
+                  } else if (direction == DismissDirection.endToStart) {
+                    return await showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Confirm Delete'),
+                        content: Text('Are you sure you want to delete ${crypto.name}?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              provider.deleteCrypto(crypto);
+                              Navigator.pop(context, true);
+                            },
+                            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  return false;
+                },
+                child: Card(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 6,
+                  margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.all(16),
+                    title: Text(
+                      crypto.name,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 4),
+                        Text(
+                          'Price: \$${crypto.price.toStringAsFixed(2)} | ${provider.convertToTHB(crypto.price).toStringAsFixed(2)} บาท',
+                          style: const TextStyle(color: Colors.green, fontSize: 16),
+                        ),
+                        const SizedBox(height: 6),
+                        if (crypto.lastUpdated != null)
+                          Text(
+                            'Updated: ${DateFormat('dd/MM/yyyy เวลา HH:mm').format(crypto.lastUpdated!)}',
+                            style: const TextStyle(color: Colors.grey, fontSize: 14),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AddCryptoScreen(),
+            ),
+          );
+        },
+        backgroundColor: Colors.blueAccent,
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
+    );
   }
 }

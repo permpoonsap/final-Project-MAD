@@ -4,6 +4,17 @@ allprojects {
         mavenCentral()
     }
 }
+buildscript {
+    repositories {
+        google()  // ต้องมี repository นี้
+        mavenCentral()  // และ mavenCentral ก็สำคัญเช่นกัน
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.2.1'  // ระบุเวอร์ชันที่ต้องการ
+    }
+}
+
+
 
 rootProject.buildDir = "../build"
 subprojects {
